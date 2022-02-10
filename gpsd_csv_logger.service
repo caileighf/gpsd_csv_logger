@@ -1,0 +1,14 @@
+[Unit]
+Description=GPSDCSV Echogram GPSD CSV Logger
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=2
+User=ubuntu
+
+WorkingDirectory=/home/ubuntu/gpsd_csv_logger/data
+ExecStart=/home/ubuntu/gpsd_csv_logger/utils/log_gps.sh
+
+[Install]
+WantedBy=multi-user.target
