@@ -16,7 +16,8 @@ if __name__ == '__main__':
                                       help="utm zone if UTM passed for -p/--projection")
     parser.add_argument('--feature', type=str,
                                      default=None,
-                                     nargs='*')
+                                     nargs='*',
+                                     help=str(sorted([k for k, v in cf.__dict__.items() if 'cartopy.feature' in str(type(v))])))
     parser.add_argument('--track-dir', type=str,
                                        default=None)
     parser.add_argument('--csv-row-regex', type=str,
