@@ -3,6 +3,7 @@ import datetime
 
 import cartopy.crs as ccrs
 import cartopy.feature as cf
+import utm
 
 if __name__ == '__main__':
 
@@ -24,10 +25,11 @@ if __name__ == '__main__':
                                            default='')
     parser.add_argument('--csv-dt-strfmt', type=str,
                                            default=None)
+    parser.add_argument('--iso-datetime', action="store_true", help="If timestamp is recoginzed iso format (strips partial seconds and tzone)")
     parser.add_argument('--csv-header-rows', type=int,
                                              default=0)
     parser.add_argument('--csv-columns', type=str,
-                                         default=['lat', 'lon', 'time'],
+                                         default=['time', 'lat', 'lon'],
                                          nargs=3,
                                          help="if the csv has the columns in a different order. Still needs to be the same names")
     parser.add_argument('-b', '--base', action="store_true", help="Plot base features (COASTLINE, OCEAN)")
@@ -106,26 +108,41 @@ if __name__ == '__main__':
         if args.csv_dt_strfmt:
             # turn into datetime objects if user passed a dt string format
             times = [datetime.datetime.strptime(t, args.csv_dt_strfmt) for t in times]
+        elif args.iso_datetime:
+            times = [datetime.datetime.timestamp(datetime.datetime.fromisoformat(t.split('.')[0])) for t in times]
         else:
             times = [float(t) for t in times]
 
         lats = [float(l) for l in columns[args.csv_columns.index('lat')]]
         lons = [float(l) for l in columns[args.csv_columns.index('lon')]]
 
+        if args.debug:
+            e, n, z, l = utm.from_latlon(lats[0], lons[0])
+            e1, n1, z1, l1 = utm.from_latlon(lats[-1], lons[-1])
+            print('UTM Zone(s) with first and last, lat/lon')
+            print(f'\tStarting...lat: {lats[0]} lon: {lons[0]}')
+            print(f'\t |                   northing,          easting,           zone')
+            print(f'\t |... UTM Zone info: {n}, {e}, {z} {l}\n')
+
+            print(f'\tFinal......lat: {lats[-1]} lon: {lons[-1]}')
+            print(f'\t |                   northing,          easting,           zone')
+            print(f'\t |... UTM Zone info: {n1}, {e1}, {z1} {l1}\n')
+            print('--------------------------------------------------------------------')
+
         if args.projection == 'UTM':
             # convert lat/lons to northing/easting
-            import utm
             northing, easting, ts = [], [], []
             for lat, lon, t in zip(lats, lons, times):
-                n, e, _, _ = utm.from_latlon(lat, lon)
+                n, e, z, _ = utm.from_latlon(lat, lon)
                 northing.append(n)
                 easting.append(e)
                 ts.append(t)
 
-            ax.scatter(northing, easting, c=ts, cmap='jet', label='track in UTM Northing, Easting from lat/lon')
+            cm = ax.scatter(northing, easting, c=ts, cmap='jet', label='track in UTM Northing, Easting from lat/lon')
         else:
-            ax.scatter(lats, lons, c=times, cmap='jet', label='track lat/lon in decimal degrees')
-
+            cm = ax.scatter(lats, lons, c=times, cmap='jet', label='track lat/lon in decimal degrees')
+            
+        plt.colorbar(cm, cmap='jet', ax=ax, orientation='horizontal')
         ax.legend() # if we plotted a track
 
     if not args.no_gridlines:
@@ -136,7 +153,7 @@ if __name__ == '__main__':
     if args.debug:
         xlim = ax.get_xlim()
         ylim = ax.get_ylim()
-        offset = 2
+        offset = 0
         print('x limits: {},\ny limits: {},\noffset deg lat/lon: {}'.format(xlim, ylim, offset))
         ax.set_xlim((xlim[0] - offset, xlim[1] + offset))
         ax.set_ylim((ylim[0] - offset, ylim[1] + offset))
